@@ -1,0 +1,214 @@
+---
+title: "BA_HW2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Problem 1:
+```{r message=FALSE}
+url = "https://raw.githubusercontent.com/jcbonilla/BusinessAnalytics/master/BAData/JC-201709-citibike-tripdata.csv"
+citibike = read.csv(url)
+df = as.data.frame(citibike)
+```
+
+
+summary statistics for tripduration
+```{r message=FALSE}
+summary(df$tripduration)
+var(df$tripduration)
+sd(df$tripduration)
+range(df$tripduration)
+```
+
+
+summary statistics for age
+```{r message=FALSE}
+library(lubridate)
+age <- function(dob, age.day = today(), units = "years", floor = TRUE) {
+    calc.age = interval(dob, age.day) / duration(num = 1, units = units)
+    if (floor) return(as.integer(floor(calc.age)))
+    return(calc.age)
+}
+df$birth.year = as.Date(df$birth.year, "%Y")
+df$age = age(df$birth.year)
+summary(df$age)
+var(df$age, na.rm=TRUE)
+sd(df$age, na.rm=TRUE)
+range(df$age, na.rm=TRUE)
+```
+
+
+summary statistics for tripduration in minutes
+```{r message=FALSE}
+df$tripduration_min = round((df$tripduration/60), digits = 2)
+summary(df$tripduration_min)
+var(df$tripduration_min)
+sd(df$tripduration_min)
+range(df$tripduration_min)
+```
+
+
+correlation between age and tripduration
+```{r message=FALSE}
+plot(df$tripduration,df$age)
+cor(df$tripduration, df$age, use = "complete.obs")
+```
+
+
+What is the total revenue assuming all users riding bikes from 0 to 45 minutes pay 
+3 per ride and user exceeding 45 minutes pay an additional $2 per ride.
+```{r message=FALSE}
+library(dplyr)
+count_less45 = df %>% summarize(count = sum(df$tripduration_min<=45))
+count_greater45 = df %>% summarize(count = sum(df$tripduration_min>45))
+price_less45 = 3
+price_greater45 = 5
+total_revenue = (count_less45 * price_less45) + (count_greater45 * price_greater45)
+total_revenue[1,1]
+```
+
+
+```{r message=FALSE}
+hist(df$tripduration_min,
+     xlim=c(0,100), breaks=10000,
+     xlab="Min",
+     border="blue",
+     col="green",
+     las=1,
+     main="Histogram for Min")
+var(df$tripduration_min)
+count_less45[1,1]/nrow(df)
+```
+The variance of trip-duration is huge. The reason is that a small part of clients used citibikes for days
+that enlarged the range of data. However, more than 98% of clients' trip durations are less than 45 minutes. This
+means although the scope of trip-duration is broad, the significant citibike clients are those people who return the
+bikes within 45 min. In other words, the considerable clients of citibike are those people who pay $3 for their rides.
+
+
+What does this mean for the pricing strategy?
+
+As mentioned above, more than 98% of clients of citibike are those people who pay $3 for their rides. This means
+the dominating reason for charging an additional $2 for trips longer than 45min is not generating more revenues. 
+Because the revenues generated from the additional fee is only a small portion of total revenue. This pricing stretegy
+is more likely to be a signal to the clients that "$3 per ride is a fair price" because most clients would return
+the bikes within 45 mins. For citibike, the price strategy of "$3 for all trips from 0 to 45 minutes" can help them 
+to generate more revenues compared to "charge by every minute". Under the current price strategy, the average revenue 
+per minute is high at the start and gradually goes down. Similarly, the number of clients is also high at the start 
+and gradually goes down. So, this pricing strategy maximized revenue because high average revenue corresponds to a 
+large amount of clients.
+
+
+ What does this mean for inventory availability?
+ 
+ An additional 2 is charged to clients with a ride more than 45 mins indicates that citibike expected most clients return 
+ the bikes with 45 mins. This indicates the inventory of citybike is not large enough to support too many long trips. By 
+ charging an additional $2 for long trips, citibike forces some clients to return the bike instead of keep
+ the bikes on their hands for a long period.
+ 
+ 
+ 
+Prlblem 2:
+```{r message=FALSE}
+url2 = "https://raw.githubusercontent.com/jcbonilla/BusinessAnalytics/master/BAData/zagat.CSV"
+zagat = read.csv(url2)
+df2 = as.data.frame(zagat) 
+```
+
+Statistics of Central Tendency
+```{r message=FALSE}
+sapply(df2[,2:5], mean)
+library(psych)
+sapply(df2[,2:5], geometric.mean)
+sapply(df2[,2:5], harmonic.mean)
+sapply(df2[,2:5], median)
+library(DescTools)
+sapply(df2[,2:5], Mode)
+```
+
+Statistics of spread and dispersion of the ratings
+```{r message=FALSE}
+sapply(df2[,2:5], range)
+sapply(df2[,2:5], var)
+sapply(df2[,2:5], sd)
+sapply(df2[,2:5], IQR)
+
+par(mfrow = c(2,2))
+boxplot(df2$Food, xlab="Food", outline = F)
+boxplot(df2$Decor, xlab="Decor", outline = F)
+boxplot(df2$Service, xlab="Service", outline = F)
+boxplot(df2$Price, xlab="Price", outline = F)
+```
+
+correlations between rating dimensions
+```{r message=FALSE}
+source("http://www.sthda.com/upload/rquery_cormat.r")
+rquery.cormat(df2[,2:5])
+```
+
+
+weighted average (index) that computes scores for each restaurant. (weighted entropy method) 
+```{r message=FALSE}
+df2$Name <- NULL
+min.max.norm <- function(x){
+  (x-min(x))/(max(x)-min(x))
+}
+
+w1 = sapply(df2, min.max.norm)
+
+first1 <- function(data)
+{
+  x <- c(data)
+  for(i in 1:length(data))
+    x[i] = data[i]/sum(data[])
+  return(x)
+}
+
+df3 = apply(w1,2,first1)
+
+first2 <- function(data)
+{
+  x <- c(data)
+  for(i in 1:length(data)){
+    if(data[i] == 0){
+      x[i] = 0
+    }else{
+      x[i] = data[i] * log(data[i])
+    }
+  }
+  return(x)
+}
+
+df4 = apply(df3, 2, first2)
+
+k <- 1/log(length(df4[,1]))
+d <- -k * colSums(df4)
+
+d = 1-d
+
+w = d/sum(d)
+w
+```
+
+What makes a business more profitable?
+
+I believe the first thing to make a business more profitable is to find a balance between
+price and the number of customers each day. You do not want too many customers waiting outside, 
+and you do not want too many empty tables in the restaurant. The second thing to make a business
+more profitable is to make the restaurant unique from the competitors.vMost people would like to 
+try something they never met before. To distinguish yourself from others is also essential to 
+attract new customers.
+
+
+
+If you were hired to advise a new restaurant operator, what would you
+recommend in terms of the balance & trade-offs between food, decor, service, and
+price?
+
+Based on my previous analysis, the weights of four criteria rank high to low as
+Price > Decor > Service > Food. So, the restaurants should put the most effort into managing
+their price strategy to attract more customers. Also, they need to put some efforts in
+service and decor because these two criteria have similar weights, which are around 20%.
